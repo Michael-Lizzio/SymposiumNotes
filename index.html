@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Symposium Notes - AI Note Taking Tool</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="assets/css/style.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -87,27 +86,25 @@
         </div>
     </div>
 
+    <!-- JavaScript Files -->
+    <script src="assets/audio/test_listener.js"></script>
+    <script src="assets/js/transcriber.js"></script>
+
     <script>
-        // Example for handling file input and button click event
         document.getElementById('transcribeButton').addEventListener('click', function() {
             const audioFile = document.getElementById('audioFile').files[0];
+
             if (audioFile) {
-                // Placeholder: Here you would integrate your transcription API or function
-                transcribeAudio(audioFile);
+                sendAudioToTranscriber(audioFile);
             } else {
                 alert('Please upload an audio file to transcribe.');
             }
         });
 
-        function transcribeAudio(audioFile) {
-            // For now, just simulate a transcription process
-            document.getElementById('transcriptionResult').textContent = 'Transcribing...';
-
-            // Simulated transcription result after a short delay
-            setTimeout(function() {
-                document.getElementById('transcriptionResult').textContent = 
-                    'Transcription result: \n\nHello, welcome to Symposium Notes! This is a simulated transcription of your uploaded audio.';
-            }, 2000); // 2 seconds delay to simulate processing
+        function sendAudioToTranscriber(audioFile) {
+            localStorage.setItem('pendingAudio', audioFile.name); // Store file name for transcriber.js
+            alert('Audio file sent for transcription. Check the transcription page.');
+            window.location.href = 'transcription.html'; // Redirect to transcription page
         }
     </script>
 </body>

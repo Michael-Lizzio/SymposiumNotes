@@ -1,27 +1,32 @@
-async function transcribeAudio(audioFilePath) {
-    try {
-        console.log(`Transcribing file: ${audioFilePath}`);
-        
-        const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Bearer YOUR_API_KEY',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ file: audioFilePath, model: 'whisper-1' })
-        });
-        
-        const result = await response.json();
-        if (result.text) {
-            storeTranscription(result.text);
-        }
-    } catch (error) {
-        console.error('Transcription error:', error);
+document.addEventListener("DOMContentLoaded", function () {
+    // Retrieve audio file name from localStorage
+    const audioFileName = localStorage.getItem("pendingAudio");
+
+    if (audioFileName) {
+        processAudioFile(audioFileName);
+        localStorage.removeItem("pendingAudio"); // Clear it after processing
     }
+});
+
+// Function to process the received audio file
+function processAudioFile(fileName) {
+    // Simulate sending to AI and getting a transcription
+    console.log(`Processing file: ${fileName}`);
+
+    // Simulated AI transcription
+    setTimeout(() => {
+        const fakeTranscription = `Transcribed text for ${fileName}: "This is a sample transcription output."`;
+
+        saveTranscription(fakeTranscription);
+    }, 2000); // Simulate 2-second AI processing delay
 }
 
-function storeTranscription(transcription) {
-    let transcriptions = JSON.parse(localStorage.getItem('transcriptions')) || [];
-    transcriptions.push(transcription);
-    localStorage.setItem('transcriptions', JSON.stringify(transcriptions));
+// Function to save transcription and update transcription.html
+function saveTranscription(text) {
+    let transcriptions = JSON.parse(localStorage.getItem("transcriptions")) || [];
+    transcriptions.push(text);
+    localStorage.setItem("transcriptions", JSON.stringify(transcriptions));
+
+    // Redirect to transcription page to display results
+    window.location.href = "transcription.html";
 }
