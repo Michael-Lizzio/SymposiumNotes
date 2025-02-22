@@ -1,219 +1,250 @@
 document.addEventListener("DOMContentLoaded", () => {
     // ======= CONFIGURABLE VARIABLES =======
     const config = {
-      calibrationDuration: 3000,          // (ms) How long to calibrate to determine baseline noise level.
-      silenceThresholdMultiplier: 1.5,    // Multiplier for baseline to set the "silence" threshold.
-      silenceDuration: 1500,              // (ms) Duration of continuous low volume required to trigger segmentation.
-      overlapDuration: 500,               // (ms) Amount of audio from the end of the segment to include in the next one.
-      timeslice: 100,                     // (ms) Frequency of MediaRecorder's dataavailable events.
-      minSegmentDuration: 1000            // (ms) Ignore segments that are too short.
+      calibrationDuration: 3000,                // ms for initial baseline volume calibration
+      speechStartThresholdMultiplier: 2,        // multiplier above baseline to consider speech start
+      speechStopThresholdMultiplier: 1.2,         // multiplier above baseline to consider speech still ongoing (if below, it's silence)
+      speechStartDuration: 3000,                  // ms of sustained loudness above start threshold to confirm speech
+      silenceDuration: 1500,                      // ms of sustained silence (below stop threshold) before ending a segment
+      minSegmentDuration: 1000,                   // discard very short segments
     };
-    
-    // ======= STATE VARIABLES =======
+  
+    // ======= AUDIO ANALYSIS STATE =======
+    let audioContext, analyser, dataArray;
     let baselineVolume = 0;
     let calibrating = true;
-    let calibrationStartTime = null;
     let calibrationSamples = [];
-    
+  
+    // ======= RECORDERS =======
+    let stream = null;             // Microphone stream
+    let segmentRecorder = null;    // Active segment recorder
+    let segmentChunks = [];        // Data for current speech segment
+  
+    // ======= FLAGS & TIMING =======
+    let isRecording = false;
+    let segmentActive = false;
+    let segmentSilenceStart = null;
+    let candidateStartTime = null;          // Time when potential speech segment started
+    let sustainedSpeechConfirmed = false;   // Flag if speech sustained for required duration
     let recordingStartTime = null;
-    let currentSegmentChunks = []; // Array of { blob, timestamp } for the current segment.
-    let pendingOverlapChunks = []; // Chunks to prepend to the next segment.
     let segmentCounter = 1;
-    let silenceStart = null;       // Timestamp (ms) when silence first detected.
-
-    let segments = []; // Stores finalized audio segments
-
-    
-    let mediaRecorder, audioContext, analyser, dataArray;
-    
+  
     // ======= DOM ELEMENTS =======
     const startBtn = document.getElementById("startRecord");
     const stopBtn = document.getElementById("stopRecord");
     const segmentsContainer = document.getElementById("segmentsContainer");
-
-    
-    // ======= FUNCTIONS =======
-    
-    // Request microphone access and set up the recorder + analyser
+  
+    // ─────────────────────────────────────────────────────────
+    //  START RECORDING (SETUP MICROPHONE + ANALYZER)
+    // ─────────────────────────────────────────────────────────
     async function startRecording() {
-        console.log("Started recording")
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            
-            // Setup AudioContext & Analyser for real-time volume measurement
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            analyser = audioContext.createAnalyser();
-            analyser.fftSize = 256;
-            const source = audioContext.createMediaStreamSource(stream);
-            source.connect(analyser);
-            dataArray = new Uint8Array(analyser.frequencyBinCount);
-        
-            // Setup MediaRecorder; use timeslice to get frequent small chunks
-            mediaRecorder = new MediaRecorder(stream);
-            recordingStartTime = performance.now();
-            calibrationStartTime = recordingStartTime;
-            calibrating = true;
-            calibrationSamples = [];
-        
-            // If any pending overlap exists (from a previous segment), begin with that
-            currentSegmentChunks = pendingOverlapChunks.slice();
-            pendingOverlapChunks = [];
-        
-            // On each timeslice, store the audio chunk with a timestamp.
-            mediaRecorder.ondataavailable = (e) => {
-            const timestamp = performance.now() - recordingStartTime;
-            currentSegmentChunks.push({ blob: e.data, timestamp });
-            };
-        
-            // Start the recorder; using config.timeslice ensures ondataavailable fires frequently.
-            mediaRecorder.start(config.timeslice);
-            
-            // Start monitoring the audio volume for silence detection.
-            requestAnimationFrame(monitorVolume);
-        
-            // Disable/enable buttons appropriately.
-            startBtn.disabled = true;
-            stopBtn.disabled = false;
-        } catch (err) {
-            console.error("Error accessing microphone:", err);
-            alert("Microphone access is required.");
-        }
+      console.log("Requesting microphone...");
+      try {
+        // 1) Get microphone stream (reuse for all recordings)
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  
+        // 2) Setup audio context/analyser for volume detection
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+  
+        // 3) Initialize calibration
+        recordingStartTime = performance.now();
+        calibrating = true;
+        calibrationSamples = [];
+  
+        isRecording = true;
+  
+        // 4) Begin monitoring volume for auto-cut segments
+        requestAnimationFrame(monitorVolume);
+  
+        // Update UI
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        console.log("Recording started!");
+      } catch (err) {
+        console.error("Error accessing microphone:", err);
+        alert("Microphone access is required.");
+      }
     }
-    
-    // Monitor audio volume and perform calibration/segmentation.
+  
+    // ─────────────────────────────────────────────────────────
+    //  MONITOR VOLUME (CALIBRATION + SEGMENT DETECTION)
+    // ─────────────────────────────────────────────────────────
     function monitorVolume() {
-        console.log("monitorVolume")
-
-        analyser.getByteFrequencyData(dataArray);
-        // Calculate an average normalized volume (0 to 1)
-        const avg = dataArray.reduce((sum, val) => sum + val, 0) / dataArray.length;
-        const normalizedVolume = avg / 255;
-        const now = performance.now();
-        
-        // ----- Calibration Phase -----
-        if (calibrating) {
-            calibrationSamples.push(normalizedVolume);
-            if (now - calibrationStartTime >= config.calibrationDuration) {
-            // Set the baseline as the average volume during calibration.
-            baselineVolume = calibrationSamples.reduce((a, b) => a + b, 0) / calibrationSamples.length;
-            calibrating = false;
-            console.log("Calibration complete. Baseline volume:", baselineVolume.toFixed(3));
-            }
-        } else {
-            // ----- Segmentation Logic -----
-            // Define a threshold below which we consider the audio to be "silent".
-            const silenceThreshold = baselineVolume * config.silenceThresholdMultiplier;
-            
-            if (normalizedVolume < silenceThreshold) {
-            // Volume is low: start (or continue) timing the silence.
-            if (silenceStart === null) {
-                silenceStart = now;
-                console.log("low volume start");
-            }
+      analyser.getByteFrequencyData(dataArray);
+      const avg = dataArray.reduce((sum, val) => sum + val, 0) / dataArray.length;
+      const normalizedVolume = avg / 255;
+      const now = performance.now();
+  
+      if (calibrating) {
+        calibrationSamples.push(normalizedVolume);
+        if (now - recordingStartTime >= config.calibrationDuration) {
+          baselineVolume =
+            calibrationSamples.reduce((a, b) => a + b, 0) / calibrationSamples.length;
+          calibrating = false;
+          console.log("Calibration complete. Baseline volume:", baselineVolume.toFixed(3));
+        }
+      } else {
+        // Define thresholds based on baseline
+        const startThreshold = baselineVolume * config.speechStartThresholdMultiplier;
+        const stopThreshold = baselineVolume * config.speechStopThresholdMultiplier;
+  
+        if (!segmentActive) {
+          // Not currently recording a segment
+          if (normalizedVolume > startThreshold) {
+            if (!candidateStartTime) {
+              candidateStartTime = now;
+              // Start candidate segment recording immediately to not miss any audio
+              startSegment();
             } else {
-            // Audio is above threshold: if we were in silence long enough, finalize the segment.
-            if (silenceStart !== null && now - silenceStart >= config.silenceDuration) {
-                finalizeSegment();
+              // Check if candidate speech has been sustained for the required duration
+              if (!sustainedSpeechConfirmed && (now - candidateStartTime >= config.speechStartDuration)) {
+                sustainedSpeechConfirmed = true;
+                console.log("Sustained speech confirmed.");
+              }
             }
-            silenceStart = null; // Reset silence detection.
-            }
-        }
-        
-        // Continue the loop as long as recording is active.
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            requestAnimationFrame(monitorVolume);
-        }
-    }
-    
-    // Finalize the current segment if it’s long enough.
-    function finalizeSegment() {
-        console.log("finalizeSegment")
-        // Only finalize if the segment is longer than the minimum allowed duration.
-        if (currentSegmentChunks.length === 0) return;
-
-        const segmentStartTime = currentSegmentChunks[0].timestamp;
-        const segmentEndTime = currentSegmentChunks[currentSegmentChunks.length - 1].timestamp;
-        const duration = segmentEndTime - segmentStartTime;
-      
-        // If duration < threshold, skip
-        if (duration < config.minSegmentDuration) {
-            console.log("Segment too short; not finalizing.");
-            return;
-        }
-        
-        // Determine how many chunks (approximately) correspond to the desired overlap duration.
-        const numOverlapChunks = Math.ceil(config.overlapDuration / config.timeslice);
-        let finalizedChunks, overlapChunks;
-        
-        if (currentSegmentChunks.length > numOverlapChunks) {
-            finalizedChunks = currentSegmentChunks.slice(0, currentSegmentChunks.length - numOverlapChunks);
-            overlapChunks = currentSegmentChunks.slice(currentSegmentChunks.length - numOverlapChunks);
+          } else {
+            // Reset candidate if volume falls below the start threshold before confirmation
+            candidateStartTime = null;
+          }
         } else {
-            finalizedChunks = currentSegmentChunks.slice();
-            overlapChunks = [];
-        }
-        
-        // Create a Blob for the finalized segment.
-        const blobs = finalizedChunks.map((item) => item.blob);
-        const segmentBlob = new Blob(blobs, { type: mediaRecorder.mimeType });
-        segments.push(segmentBlob);
-        //  createSegmentDownloadLink(segmentBlob, segmentCounter);
-        createSegmentEntry(segmentBlob, segmentCounter);
-
-        console.log(`Segment ${segmentCounter} finalized. Duration: ${(segmentEndTime - segmentStartTime).toFixed(0)} ms`);
-        segmentCounter++;
-        
-        // Save the overlap chunks for the next segment.
-        pendingOverlapChunks = overlapChunks.slice();
-        // Reset current segment buffer to start with the overlap.
-        currentSegmentChunks = pendingOverlapChunks.slice();
-    }
-    
-    // Create a download link for a given audio segment.
-    function createSegmentDownloadLink(blob, index) {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `segment_${index}.webm`;
-        link.innerText = `Download Segment ${index}`;
-        link.style.display = "block";
-        downloadSegmentsContainer.appendChild(link);
-        }
-        
-        // ======= EVENT LISTENERS =======
-        startBtn.addEventListener("click", startRecording);
-        
-        stopBtn.addEventListener("click", () => {
-        // Stop the MediaRecorder and finalize any current segment.
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.stop();
-            if (currentSegmentChunks.length > 0) {
-            finalizeSegment();
+          // Segment is active; check for silence to potentially stop the segment
+          if (normalizedVolume < stopThreshold) {
+            if (!segmentSilenceStart) {
+              segmentSilenceStart = now;
+            } else if (now - segmentSilenceStart >= config.silenceDuration) {
+              stopSegment();
             }
+          } else {
+            // Reset silence timer if volume goes back up
+            segmentSilenceStart = null;
+            // Also check for sustained confirmation if not yet confirmed
+            if (!sustainedSpeechConfirmed && candidateStartTime && (now - candidateStartTime >= config.speechStartDuration)) {
+              sustainedSpeechConfirmed = true;
+              console.log("Sustained speech confirmed.");
+            }
+          }
+        }
+      }
+  
+      if (isRecording) {
+        requestAnimationFrame(monitorVolume);
+      }
+    }
+  
+    // ─────────────────────────────────────────────────────────
+    //  START A NEW SEGMENT RECORDER
+    // ─────────────────────────────────────────────────────────
+    function startSegment() {
+      console.log("Speech detected, starting segment...");
+      segmentActive = true;
+      segmentSilenceStart = null;
+      // Note: candidateStartTime is already set in monitorVolume
+      sustainedSpeechConfirmed = false; // Reset confirmation flag
+      segmentChunks = [];
+      segmentRecorder = new MediaRecorder(stream);
+      segmentRecorder.ondataavailable = (event) => {
+        segmentChunks.push(event.data);
+      };
+      segmentRecorder.onstop = () => {
+        finalizeSegment();
+      };
+  
+      segmentRecorder.start();
+      console.log("Segment recorder started.");
+    }
+  
+    // ─────────────────────────────────────────────────────────
+    //  STOP SEGMENT RECORDER
+    // ─────────────────────────────────────────────────────────
+    function stopSegment() {
+      console.log("Silence detected, stopping segment...");
+      segmentActive = false;
+      if (segmentRecorder && segmentRecorder.state === "recording") {
+        segmentRecorder.stop();
+      }
+    }
+  
+    // ─────────────────────────────────────────────────────────
+    //  FINALIZE SEGMENT (CALLED IN segmentRecorder.onstop)
+    // ─────────────────────────────────────────────────────────
+    function finalizeSegment() {
+      // Discard segment if sustained speech was never confirmed
+      if (!sustainedSpeechConfirmed) {
+        console.log("Candidate speech was not sustained. Discarding segment.");
+        candidateStartTime = null;
+        sustainedSpeechConfirmed = false;
+        segmentChunks = [];
+        return;
+      }
+  
+      // Create blob from recorded data
+      const segmentBlob = new Blob(segmentChunks, { type: "audio/webm" });
+      // Approximate segment duration (for further filtering if desired)
+      const segmentDuration = performance.now() - candidateStartTime;
+      if (segmentDuration < config.minSegmentDuration) {
+        console.log("Segment too short, discarding.");
+        candidateStartTime = null;
+        sustainedSpeechConfirmed = false;
+        segmentChunks = [];
+        return;
+      }
+  
+      console.log("Finalized segment:", segmentBlob.size, "bytes");
+      createSegmentEntry(segmentBlob, segmentCounter++);
+      // Reset candidate and segment states
+      candidateStartTime = null;
+      sustainedSpeechConfirmed = false;
+      segmentChunks = [];
+    }
+  
+    // ─────────────────────────────────────────────────────────
+    //  CREATE UI ENTRY FOR A FINALIZED SEGMENT
+    // ─────────────────────────────────────────────────────────
+    function createSegmentEntry(blob, index) {
+      const url = URL.createObjectURL(blob);
+      const container = document.createElement("div");
+      container.style.marginBottom = "10px";
+  
+      const audioElement = document.createElement("audio");
+      audioElement.src = url;
+      audioElement.controls = true;
+  
+      const downloadLink = document.createElement("a");
+      downloadLink.href = url;
+      downloadLink.download = `segment_${index}.webm`;
+      downloadLink.innerText = `Download Segment ${index}`;
+      downloadLink.style.marginLeft = "10px";
+  
+      container.appendChild(audioElement);
+      container.appendChild(downloadLink);
+      segmentsContainer.appendChild(container);
+    }
+  
+    // ─────────────────────────────────────────────────────────
+    //  STOP RECORDING (CLEANUP)
+    // ─────────────────────────────────────────────────────────
+    function stopRecording() {
+      if (isRecording) {
+        isRecording = false;
+        // Stop active segment if recording
+        if (segmentActive) {
+          stopSegment();
         }
         startBtn.disabled = false;
         stopBtn.disabled = true;
-    });
-
-    function createSegmentEntry(blob, index) {
-        const url = URL.createObjectURL(blob);
-        
-        const container = document.createElement("div");
-        container.style.marginBottom = "10px";
-    
-        const audioElement = document.createElement("audio");
-        audioElement.src = url;
-        audioElement.controls = true;
-    
-        const downloadLink = document.createElement("a");
-        downloadLink.href = url;
-        downloadLink.download = `segment_${index}.webm`;
-        downloadLink.innerText = `Download Segment ${index}`;
-        downloadLink.style.marginLeft = "10px";
-    
-        container.appendChild(audioElement);
-        container.appendChild(downloadLink);
-        segmentsContainer.appendChild(container);
+        console.log("Recording stopped completely.");
+      }
     }
-    
-});
+  
+    // ─────────────────────────────────────────────────────────
+    //  BUTTON EVENT LISTENERS
+    // ─────────────────────────────────────────────────────────
+    startBtn.addEventListener("click", startRecording);
+    stopBtn.addEventListener("click", stopRecording);
+  });
+  
