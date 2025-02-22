@@ -63,7 +63,9 @@
         <button id="transcriptionButton" class="transcription-btn" onclick="goToTranscription()">View Transcription</button>
     </div>
 
+    <!-- Updated paths to scripts -->
     <script src="assets/audio/test_listener.js"></script>
+    <script src="assets/js/transcriber.js"></script>
     <script>
         document.getElementById("recordButton").addEventListener("click", function () {
             this.disabled = true; // Disable the button after clicking
@@ -74,7 +76,5 @@
             window.location.href = "transcription.html";
         }
     </script>
-    <script src="/assets/audio/test_listener.js"></script>
-
 </body>
 </html>
