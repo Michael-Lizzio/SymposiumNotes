@@ -25,20 +25,48 @@
             background-color: white;
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
         }
-        .header {
-            font-size: 2em;
+        .file-input-container, .record-container {
             margin-bottom: 20px;
         }
-        .file-input-container {
-            margin-bottom: 20px;
-        }
-        .file-input {
+        .record-btn {
             font-size: 1em;
-            padding: 10px;
-            width: 100%;
-            border: 2px solid #5c6bc0;
+            padding: 10px 15px;
+            border: none;
             border-radius: 5px;
+            background-color: #ff5722;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .record-btn:hover {
+            background-color: #e64a19;
+        }
+        .audio-segments {
+            margin-top: 20px;
+            text-align: left;
+        }
+        .audio-segment {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #eef;
+            border-radius: 5px;
+        }
+        .download-btn {
+            background-color: #4caf50;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .download-btn:hover {
+            background-color: #388e3c;
         }
         .transcription-btn {
             font-size: 1.1em;
@@ -49,17 +77,10 @@
             border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.3s;
+            margin-top: 15px;
         }
         .transcription-btn:hover {
             background-color: #3f51b5;
-        }
-        .transcription-result {
-            margin-top: 20px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            background-color: #fafafa;
-            white-space: pre-wrap;
-            word-wrap: break-word;
         }
     </style>
 </head>
@@ -70,12 +91,18 @@
     </header>
 
     <div class="container">
-        <div class="header">Upload Your Audio to Transcribe</div>
+        <h2>Upload or Record Your Audio</h2>
 
         <!-- Audio File Upload -->
         <div class="file-input-container">
             <input type="file" id="audioFile" accept="audio/*" class="file-input">
         </div>
+
+        <h3>Or Record Audio</h3>
+        <button id="recordButton" class="record-btn">Start Recording</button>
+
+        <!-- Recorded Audio Segments -->
+        <div class="audio-segments" id="audioSegments"></div>
 
         <!-- Transcription Button -->
         <button class="transcription-btn" id="transcribeButton">Transcribe Audio</button>
@@ -86,26 +113,7 @@
         </div>
     </div>
 
-    <!-- JavaScript Files -->
-    <script src="assets/audio/test_listener.js"></script>
+    <script src="assets/js/recorder.js"></script>
     <script src="assets/js/transcriber.js"></script>
-
-    <script>
-        document.getElementById('transcribeButton').addEventListener('click', function() {
-            const audioFile = document.getElementById('audioFile').files[0];
-
-            if (audioFile) {
-                sendAudioToTranscriber(audioFile);
-            } else {
-                alert('Please upload an audio file to transcribe.');
-            }
-        });
-
-        function sendAudioToTranscriber(audioFile) {
-            localStorage.setItem('pendingAudio', audioFile.name); // Store file name for transcriber.js
-            alert('Audio file sent for transcription. Check the transcription page.');
-            window.location.href = 'transcription.html'; // Redirect to transcription page
-        }
-    </script>
 </body>
 </html>
