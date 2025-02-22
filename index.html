@@ -1,21 +1,93 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Lecture Recorder with Segmentation</title>
-    <link rel="stylesheet" href="assets/css/style.css" />
-    </head>
-    <body>
-    <h1>Lecture Recorder with Segmentation</h1>
-    <button id="startRecord">Start Recording</button>
-    <button id="stopRecord" disabled>Stop Recording</button>
-    
-    <h2>Recorded Segments</h2>
-    <div id="segmentsContainer"></div>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symposium Notes - AI Note Taking Tool</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+        header {
+            background-color: #5c6bc0;
+            color: white;
+            padding: 20px 0;
+        }
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .record-btn, .transcription-btn {
+            font-size: 1.2em;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 20px;
+        }
+        .record-btn {
+            background-color: #ff5722;
+        }
+        .record-btn:hover {
+            background-color: #e64a19;
+        }
+        .transcription-btn {
+            background-color: #4CAF50;
+            display: none; /* Initially hidden */
+        }
+        .transcription-btn:hover {
+            background-color: #388E3C;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Symposium Notes</h1>
+        <p>Your AI-Powered Note Taking Assistant</p>
+    </header>
 
-    <h2>Download Segments</h2>
-    <div id="downloadSegmentsContainer"></div>
+    <div class="container">
+        <h2>Record & Test AI Transcription</h2>
+        <button id="recordButton" class="record-btn">Start Recording</button>
+        <button id="transcriptionButton" class="transcription-btn" onclick="goToTranscription()">View Transcription</button>
+        <h1>Lecture Recorder with Segmentation</h1>
+        <button id="startRecord">Start Recording</button>
+        <button id="stopRecord" disabled>Stop Recording</button>
+
+        <h2>Recorded Segments</h2>
+        <div id="segmentsContainer"></div>
+
+        <h2>Download Segments</h2>
+        <div id="downloadSegmentsContainer"></div>
+    </div>
+  
+    
+
+    <!-- Updated paths to scripts -->
+    <script src="assets/audio/test_listener.js"></script>
+    <script src="assets/js/transcriber.js"></script>
+    <script>
+        document.getElementById("recordButton").addEventListener("click", function () {
+            this.disabled = true; // Disable the button after clicking
+            document.getElementById("transcriptionButton").style.display = "inline-block"; // Show "View Transcription"
+        });
+
+        function goToTranscription() {
+            window.location.href = "transcription.html";
+        }
+    </script>
+  
     
     <script src="assets/js/listener.js"></script>
 </body>
