@@ -61,7 +61,18 @@
         <h2>Record & Test AI Transcription</h2>
         <button id="recordButton" class="record-btn">Start Recording</button>
         <button id="transcriptionButton" class="transcription-btn" onclick="goToTranscription()">View Transcription</button>
+        <h1>Lecture Recorder with Segmentation</h1>
+        <button id="startRecord">Start Recording</button>
+        <button id="stopRecord" disabled>Stop Recording</button>
+
+        <h2>Recorded Segments</h2>
+        <div id="segmentsContainer"></div>
+
+        <h2>Download Segments</h2>
+        <div id="downloadSegmentsContainer"></div>
     </div>
+  
+    
 
     <!-- Updated paths to scripts -->
     <script src="assets/audio/test_listener.js"></script>
@@ -76,5 +87,8 @@
             window.location.href = "transcription.html";
         }
     </script>
+  
+    
+    <script src="assets/js/listener.js"></script>
 </body>
 </html>
