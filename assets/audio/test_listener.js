@@ -1,4 +1,4 @@
-//document.getElementById("recordButton").addEventListener("click", startTestTranscription);
+document.getElementById("recordButton").addEventListener("click", startTestTranscription);
 
 let testAudioFiles = [
     "assets/audio/test1.mp3",
