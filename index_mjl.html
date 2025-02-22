@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Recorder with Volume Graph</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <h1>Audio Recorder with Volume Graph</h1>
+    <button id="startRecord">Start Recording</button>
+    <button id="stopRecord" disabled>Stop Recording</button>
+    
+    <h2>Recorded Audio:</h2>
+    <audio id="audioPlayer" controls></audio>
+    <a id="downloadLink" style="display: none;">Download Recording</a>
+
+    <h2>Volume Graph</h2>
+    <canvas id="volumeChart"></canvas> <!-- Graph for volume -->
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="assets/js/listener.js"></script>
+</body>
+</html>
