@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Symposium Notes - AI Note Taking Tool</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #5c6bc0;
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+        }
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        .file-input-container {
+            margin-bottom: 20px;
+        }
+        .file-input {
+            font-size: 1em;
+            padding: 10px;
+            width: 100%;
+            border: 2px solid #5c6bc0;
+            border-radius: 5px;
+        }
+        .transcription-btn {
+            font-size: 1.1em;
+            background-color: #5c6bc0;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .transcription-btn:hover {
+            background-color: #3f51b5;
+        }
+        .transcription-result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            background-color: #fafafa;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Symposium Notes</h1>
+        <p>Your AI-Powered Note Taking Assistant</p>
+    </header>
+
+    <div class="container">
+        <div class="header">Upload Your Audio to Transcribe</div>
+
+        <!-- Audio File Upload -->
+        <div class="file-input-container">
+            <input type="file" id="audioFile" accept="audio/*" class="file-input">
+        </div>
+
+        <!-- Transcription Button -->
+        <button class="transcription-btn" id="transcribeButton">Transcribe Audio</button>
+
+        <!-- Transcription Result Display -->
+        <div class="transcription-result" id="transcriptionResult">
+            <!-- Transcribed text will appear here -->
+        </div>
+    </div>
+
+    <script>
+        // Example for handling file input and button click event
+        document.getElementById('transcribeButton').addEventListener('click', function() {
+            const audioFile = document.getElementById('audioFile').files[0];
+            if (audioFile) {
+                // Placeholder: Here you would integrate your transcription API or function
+                transcribeAudio(audioFile);
+            } else {
+                alert('Please upload an audio file to transcribe.');
+            }
+        });
+
+        function transcribeAudio(audioFile) {
+            // For now, just simulate a transcription process
+            document.getElementById('transcriptionResult').textContent = 'Transcribing...';
+
+            // Simulated transcription result after a short delay
+            setTimeout(function() {
+                document.getElementById('transcriptionResult').textContent = 
+                    'Transcription result: \n\nHello, welcome to Symposium Notes! This is a simulated transcription of your uploaded audio.';
+            }, 2000); // 2 seconds delay to simulate processing
+        }
+    </script>
+</body>
+</html>
