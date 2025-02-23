@@ -3,62 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transcription Results</title>
-    <link rel="stylesheet" href="assets/css/style.css">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
-            text-align: center;
-            padding: 20px;
-        }
-        .container {
-            max-width: 800px;
-            margin: auto;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .transcription-box {
-            background: #eef;
-            padding: 15px;
-            margin-top: 10px;
-            border-radius: 5px;
-        }
-        .reset-btn {
-            background: #d9534f;
-            color: white;
-            border: none;
-            padding: 10px;
-            cursor: pointer;
-            margin-top: 20px;
-        }
-        .reset-btn:hover {
-            background: #c9302c;
-        }
-    </style>
+    <title>Transcription</title>
+    <link rel="stylesheet" href="assets/css/transcription.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Transcription Results</h1>
-        <div id="transcriptionContainer"></div>
-        <button class="reset-btn" onclick="clearTranscriptions()">Clear Transcriptions</button>
-    </div>
+    <h2>Transcription</h2>
+    <div id="transcriptText"></div>
+    <button id="clearTranscript">Clear Transcript</button>
 
     <script>
-        function loadTranscriptions() {
-            const transcriptions = JSON.parse(localStorage.getItem("transcriptions")) || [];
-            const container = document.getElementById("transcriptionContainer");
-            container.innerHTML = `<div class="transcription-box">${transcriptions.join("<br>")}</div>`;
+        function loadTranscript() {
+            document.getElementById("transcriptText").textContent = localStorage.getItem("transcript") || "No transcript available.";
         }
 
-        function clearTranscriptions() {
-            localStorage.removeItem("transcriptions");
-            loadTranscriptions();
-        }
+        document.getElementById("clearTranscript").addEventListener("click", () => {
+            localStorage.removeItem("transcript");
+            loadTranscript();
+        });
 
-        window.onload = loadTranscriptions;
+        // Listen for localStorage changes from other pages
+        window.addEventListener("storage", (event) => {
+            if (event.key === "transcript") {
+                loadTranscript();
+            }
+        });
+
+        loadTranscript(); // Initial load
     </script>
 </body>
 </html>

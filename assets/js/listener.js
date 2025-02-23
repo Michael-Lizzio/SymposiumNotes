@@ -1,3 +1,6 @@
+import { transcribeAudioFile } from "./transcriber.js";
+
+
 document.addEventListener("DOMContentLoaded", () => {
     // ======= CONFIGURABLE VARIABLES =======
     const config = {
@@ -217,7 +220,11 @@ document.addEventListener("DOMContentLoaded", () => {
           backlogChunks.forEach(item => combinedBlobParts.push(item.blob));
           combinedBlobParts.push(segmentBlob);
           const combinedBlob = new Blob(combinedBlobParts, { type: "audio/webm" });
-          createSegmentEntry(combinedBlob, segmentCounter++);
+          
+          // createSegmentEntry(combinedBlob, segmentCounter++);
+          sendSegmentEntry(combinedBlob, segmentCounter++);
+
+
           backlogChunks = [];
           backlogTotalDuration = 0;
         } else {
@@ -231,28 +238,39 @@ document.addEventListener("DOMContentLoaded", () => {
       sustainedSpeechConfirmed = false;
       segmentChunks = [];
     }
-  
+    
+
+    // ─────────────────────────────────────────────────────────
+    //  Function to send A FINALIZED SEGMENT
+    // ─────────────────────────────────────────────────────────
+    function sendSegmentEntry(blob, index) {
+        console.log(`Sending Segment ${index} for transcription...`);
+        transcribeAudioFile(blob);
+    }
     // ─────────────────────────────────────────────────────────
     //  CREATE UI ENTRY FOR A FINALIZED SEGMENT
     // ─────────────────────────────────────────────────────────
     function createSegmentEntry(blob, index) {
-      const url = URL.createObjectURL(blob);
-      const container = document.createElement("div");
-      container.style.marginBottom = "10px";
-  
-      const audioElement = document.createElement("audio");
-      audioElement.src = url;
-      audioElement.controls = true;
-  
-      const downloadLink = document.createElement("a");
-      downloadLink.href = url;
-      downloadLink.download = `segment_${index}.webm`;
-      downloadLink.innerText = `Download Segment ${index}`;
-      downloadLink.style.marginLeft = "10px";
-  
-      container.appendChild(audioElement);
-      container.appendChild(downloadLink);
-      segmentsContainer.appendChild(container);
+        console.log(`Sending Segment ${index} for transcription...`);
+        transcribeAudioFile(blob);
+
+        const url = URL.createObjectURL(blob);
+        const container = document.createElement("div");
+        container.style.marginBottom = "10px";
+    
+        const audioElement = document.createElement("audio");
+        audioElement.src = url;
+        audioElement.controls = true;
+    
+        const downloadLink = document.createElement("a");
+        downloadLink.href = url;
+        downloadLink.download = `segment_${index}.webm`;
+        downloadLink.innerText = `Download Segment ${index}`;
+        downloadLink.style.marginLeft = "10px";
+    
+        container.appendChild(audioElement);
+        container.appendChild(downloadLink);
+        segmentsContainer.appendChild(container);
     }
   
     // ─────────────────────────────────────────────────────────
@@ -287,5 +305,4 @@ document.addEventListener("DOMContentLoaded", () => {
     // ─────────────────────────────────────────────────────────
     startBtn.addEventListener("click", startRecording);
     stopBtn.addEventListener("click", stopRecording);
-  });
-  
+});
